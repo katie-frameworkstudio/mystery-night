@@ -89,28 +89,51 @@ export default async function handler(req, res) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return res.end(JSON.stringify({ text: fromNotes(question, round), source: "inspector-notes" }));
 
+  const client = new Anthropic({ apiKey: key, maxRetries: 1, timeout: 20_000 });
+  const textOf = (msg) => (msg.stop_reason === "refusal" ? "" : msg.content.filter((b) => b.type === "text").map((b) => b.text).join(" ").trim());
+  const sys = systemPrompt(round);
+  const user = [{ role: "user", content: "The table asks: " + question }];
+
+  // First try: the tuned call (200 tokens, thinking off, server-side fallback on a refusal).
   try {
-    const client = new Anthropic({ apiKey: key, maxRetries: 1, timeout: 20_000 });
     const msg = await client.beta.messages.create({
       model: MODEL,
       max_tokens: 200,
       thinking: { type: "between_tools" }, // no tools here, so the whole budget goes to the spoken reply
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: systemPrompt(round),
-      messages: [{ role: "user", content: "The table asks: " + question }],
+      system: sys,
+      messages: user,
     });
-    const text = msg.stop_reason === "refusal" ? "" : msg.content.filter((b) => b.type === "text").map((b) => b.text).join(" ").trim();
-    if (!text) return res.end(JSON.stringify({ text: fromNotes(question, round), source: "inspector-notes" }));
-    return res.end(JSON.stringify({ text, source: "claude" }));
+    const text = textOf(msg);
+    if (text) return res.end(JSON.stringify({ text, source: "claude" }));
+    console.error("inspector: empty reply", msg.stop_reason);
   } catch (err) {
+    logErr("tuned", err);
     if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.APIConnectionError) {
-      // fall through to the notes; the game never stalls on the network
-    } else if (err instanceof Anthropic.APIError) {
-      console.error("inspector: api error", err.status, err.message);
-    } else {
-      console.error("inspector: unexpected", err);
+      return res.end(JSON.stringify({ text: fromNotes(question, round), source: "inspector-notes" }));
     }
-    return res.end(JSON.stringify({ text: fromNotes(question, round), source: "inspector-notes" }));
   }
+
+  // Second try: the plainest possible request, so a rejected option never takes the Inspector down.
+  try {
+    const msg = await client.messages.create({
+      model: MODEL,
+      max_tokens: 400, // room for any default thinking plus the two or three sentences
+      output_config: { effort: "low" },
+      system: sys,
+      messages: user,
+    });
+    const text = textOf(msg);
+    if (text) return res.end(JSON.stringify({ text, source: "claude" }));
+    console.error("inspector: empty reply on plain call", msg.stop_reason);
+  } catch (err) {
+    logErr("plain", err);
+  }
+  return res.end(JSON.stringify({ text: fromNotes(question, round), source: "inspector-notes" }));
+}
+
+function logErr(stage, err) {
+  if (err instanceof Anthropic.APIError) console.error(`inspector: ${stage} api error`, err.status, err.message);
+  else console.error(`inspector: ${stage} unexpected`, err && err.message ? err.message : err);
 }
