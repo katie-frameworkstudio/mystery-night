@@ -38,7 +38,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3077. Add a key to a `.env` file (see `.env.example`) and run `ANTHROPIC_API_KEY=... npm run dev` to hear Claude as the Inspector; without one the Inspector answers from his notes.
+Open http://localhost:3077. Put a key in `.env` (copy `.env.example`) and run `npm run dev` to hear Claude as the Inspector; without one the Inspector answers from his notes.
 
 On Vercel: import the repo, add `ANTHROPIC_API_KEY` as a production environment variable, deploy. `public/` is the site, `api/` is the function. No build step.
 
