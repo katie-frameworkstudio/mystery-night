@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mystery Night</title>
+<meta name="description" content="An AI-hosted murder mystery party for the living room. The table plays the suspects. The Inspector deals the secrets, runs the clock and takes your questions.">
+<meta property="og:title" content="Mystery Night">
+<meta property="og:description" content="An AI-hosted murder mystery party for the living room. Four suspects, two rounds, one Inspector who takes questions.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://mystery-night.vercel.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* One TV-readable column, one screen at a time. County fair at night: a dark ground by design (the game runs on a living-room TV),
+   warm parchment ink, terracotta for the one action on the screen, gold for the Inspector and the evidence. */
+:root {
+  --bg: #1b1410;
+  --panel: #27201a;
+  --panel-2: #332a22;
+  --ink: #f3e9da;
+  --label: #d4c4ab;
+  --rule: #4f4134;
+  --accent: #c8502e;
+  --accent-ink: #fff6ec;
+  --gold: #e0ad45;
+  --display: "Alfa Slab One", "Rockwell", serif;
+  --body: "Source Serif 4", Georgia, serif;
+  --unit: 8px;
+  --radius: 10px;
+  color-scheme: dark;
+  font-size: 17px;
+}
+@media (min-width: 768px) { :root { font-size: 18px; } }
+@media (min-width: 1280px) { :root { font-size: 20px; } }
+@media (min-width: 1800px) { :root { font-size: 23px; } }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); line-height: 1.5; min-height: 100vh; }
+body { padding-inline: 16px; padding-bottom: calc(var(--unit) * 6); }
+@media (min-width: 768px) { body { padding-inline: calc(var(--unit) * 4); } }
+
+.site { max-width: 62rem; margin-inline: auto; }
+header.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--unit); padding-block: calc(var(--unit) * 2); border-bottom: 1px solid var(--rule); margin-bottom: calc(var(--unit) * 3); position: relative; }
+.wordmark { font-family: var(--display); font-size: 1.15rem; color: var(--gold); letter-spacing: .02em; background: none; border: 0; padding: var(--unit) 0; cursor: pointer; text-align: left; }
+.wordmark:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.icon-btn { display: inline-flex; align-items: center; gap: calc(var(--unit) * .75); min-height: 44px; min-width: 44px; padding: 0 calc(var(--unit) * 1.5); background: transparent; color: var(--ink); border: 1px solid var(--rule); border-radius: var(--radius); font-family: var(--body); font-size: .9rem; cursor: pointer; }
+.icon-btn svg { width: 22px; height: 22px; flex: none; }
+.icon-btn[aria-expanded="true"] { background: var(--panel); }
+.icon-btn .lbl { display: none; }
+@media (min-width: 600px) { .icon-btn .lbl { display: inline; } }
+
+/* The Alexa+ panel: a dropdown under the header, only as tall as its words. */
+.drop { position: absolute; right: 0; top: 100%; margin-top: var(--unit); width: min(100%, 26rem); background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); padding: calc(var(--unit) * 2); box-shadow: 0 6px 18px rgba(0,0,0,.35); z-index: 5; display: flex; flex-direction: column; gap: calc(var(--unit) * 1.5); }
+.drop .top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--unit); }
+.drop h2 { font-size: 1.05rem; }
+.close-x { background: none; border: 0; color: var(--ink); width: 44px; height: 44px; margin: -10px -10px 0 0; border-radius: var(--radius); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.close-x svg { width: 22px; height: 22px; }
+.close-x:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: .01em; margin: 0; text-wrap: balance; line-height: 1.15; }
+h1 { font-size: clamp(1.9rem, 5.2vw, 2.9rem); color: var(--gold); }
+h2 { font-size: clamp(1.3rem, 3.6vw, 1.75rem); }
+h3 { font-size: 1.05rem; color: var(--gold); }
+p { margin: 0; }
+.kicker { font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--label); font-weight: 600; }
+.kicker.gold { color: var(--gold); }
+
+.stack { display: flex; flex-direction: column; gap: calc(var(--unit) * 2); }
+main > section.stack:not(#s-round) { max-width: 48rem; }
+.stack-tight { display: flex; flex-direction: column; gap: var(--unit); }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); padding: calc(var(--unit) * 2) calc(var(--unit) * 2.25); display: flex; flex-direction: column; gap: calc(var(--unit) * 1.5); min-width: 0; }
+.card .inner { background: var(--panel-2); border-radius: calc(var(--radius) - 4px); padding: calc(var(--unit) * 1.5) calc(var(--unit) * 1.75); display: flex; flex-direction: column; gap: var(--unit); }
+.narration { font-size: 1.2rem; line-height: 1.45; }
+.evidence { border: 1px dashed var(--gold); border-radius: var(--radius); padding: calc(var(--unit) * 1.5) calc(var(--unit) * 2); display: flex; flex-direction: column; gap: var(--unit); }
+.evidence ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: calc(var(--unit) * .75); }
+.evidence li::marker { color: var(--gold); font-family: var(--display); }
+.reading { max-width: 36rem; }
+
+button.primary, button.plain, .accuse-grid button { font-family: var(--body); font-size: 1.02rem; min-height: 48px; padding: calc(var(--unit) * 1.25) calc(var(--unit) * 2.25); border-radius: var(--radius); cursor: pointer; border: 1px solid transparent; }
+button.primary { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.plain { background: transparent; border-color: var(--rule); color: var(--ink); }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: var(--unit) calc(var(--unit) * 1.5); align-items: center; }
+
+label.field { display: flex; flex-direction: column; gap: calc(var(--unit) * .5); font-size: .9rem; color: var(--label); font-weight: 600; }
+input[type=text] { font-family: var(--body); font-size: 1.02rem; color: var(--ink); background: var(--bg); border: 1px solid var(--rule); border-radius: var(--radius); padding: calc(var(--unit) * 1.25) calc(var(--unit) * 1.5); min-height: 48px; min-width: 0; width: 100%; }
+input[type=text]:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+input::placeholder { color: var(--label); opacity: .75; }
+
+.switch { display: inline-flex; align-items: center; gap: calc(var(--unit) * 1.25); cursor: pointer; min-height: 44px; font-size: .95rem; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .track { width: 46px; height: 26px; border-radius: 13px; background: var(--rule); position: relative; transition: background 180ms ease-out; flex: none; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); transition: transform 180ms ease-out; }
+.switch input:checked + .track { background: var(--accent); }
+.switch input:checked + .track::after { transform: translateX(20px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Lobby: briefing beside the table card from tablet width, about 3/5 to 2/5. */
+.lobby { display: grid; gap: calc(var(--unit) * 3); align-items: start; }
+@media (min-width: 768px) { .lobby { grid-template-columns: 3fr 2fr; gap: calc(var(--unit) * 5); } }
+.lobby .brief { display: flex; flex-direction: column; gap: calc(var(--unit) * 2); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--unit) * 1.5) calc(var(--unit) * 3); padding-top: var(--unit); }
+@media (min-width: 600px) { .facts { display: flex; flex-wrap: wrap; gap: calc(var(--unit) * 3); } }
+.facts div { display: flex; flex-direction: column; }
+.facts strong { font-family: var(--display); font-size: 1.6rem; color: var(--gold); line-height: 1.1; }
+.facts span { font-size: .85rem; color: var(--label); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.players { display: grid; gap: calc(var(--unit) * 1.5); }
+@media (min-width: 420px) { .players { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 768px) { .players { grid-template-columns: 1fr; } }
+@media (min-width: 1024px) { .players { grid-template-columns: 1fr 1fr; } }
+
+.timer { font-family: var(--display); font-size: clamp(2.6rem, 10vw, 4.6rem); color: var(--gold); font-variant-numeric: tabular-nums; text-align: center; line-height: 1; padding-block: var(--unit); }
+.timer.low { color: var(--accent); }
+.round-grid { display: grid; gap: calc(var(--unit) * 2); align-items: start; }
+@media (min-width: 900px) { .round-grid { grid-template-columns: 2fr 3fr; gap: calc(var(--unit) * 3); } }
+
+.log { display: flex; flex-direction: column; gap: var(--unit); max-height: 18rem; overflow-y: auto; padding-right: 4px; }
+.log .q { color: var(--label); font-weight: 600; }
+.log .a { background: var(--panel-2); border-radius: calc(var(--radius) - 4px); padding: calc(var(--unit) * 1.25) calc(var(--unit) * 1.5); }
+.log .a .who { display: block; font-family: var(--display); font-size: .8rem; color: var(--gold); margin-bottom: 4px; }
+.thinking { display: inline-flex; gap: 5px; align-items: center; }
+.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: pulse 1s infinite ease-in-out; }
+.thinking i:nth-child(2) { animation-delay: .18s; } .thinking i:nth-child(3) { animation-delay: .36s; }
+@keyframes pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.ask-row { display: grid; grid-template-columns: 1fr auto; gap: var(--unit); align-items: end; }
+.ask-row.has-mic { grid-template-columns: 1fr auto auto; }
+.mic { width: 48px; height: 48px; border-radius: var(--radius); border: 1px solid var(--rule); background: transparent; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.mic svg { width: 22px; height: 22px; }
+.mic[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.accuse-grid { display: grid; gap: calc(var(--unit) * 1.5); }
+@media (min-width: 600px) { .accuse-grid { grid-template-columns: 1fr 1fr; } }
+.accuse-grid button { background: var(--panel); border-color: var(--rule); color: var(--ink); text-align: left; min-height: 72px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.accuse-grid button .as { font-size: .85rem; color: var(--label); font-weight: 600; }
+.accuse-grid button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.accuse-grid button[aria-pressed="true"] .as { color: var(--accent-ink); }
+
+.secrets { display: flex; flex-direction: column; gap: calc(var(--unit) * 2); }
+.secrets .one { display: flex; flex-direction: column; gap: 4px; }
+.secrets .one + .one { border-top: 1px solid var(--rule); padding-top: calc(var(--unit) * 1.5); }
+
+.confirm { background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); padding: calc(var(--unit) * 2); display: flex; flex-wrap: wrap; gap: var(--unit) calc(var(--unit) * 2); align-items: center; justify-content: space-between; margin-bottom: calc(var(--unit) * 3); }
+.note { font-size: .95rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; outline: none; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="site">
+
+<header class="bar">
+  <button class="wordmark" id="btnHome" type="button" aria-label="Mystery Night, start over">Mystery Night</button>
+  <button class="icon-btn" id="btnAlexa" type="button" aria-expanded="false" aria-controls="alexaPanel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M8 21h8"/></svg>
+    <span class="lbl">Alexa+ simulation</span>
+  </button>
+  <div class="drop" id="alexaPanel" hidden>
+    <div class="top">
+      <h2>How the Alexa+ side works here</h2>
+      <button class="close-x" id="btnAlexaClose" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="note">This page is the simulated Alexa+ experience. On a device you would say "Alexa, start Mystery Night" and the Inspector would speak from the room. Here the Inspector speaks through this screen's voice, and in the rounds you can ask him by voice or by typing. Nothing here is an Amazon product.</p>
+    <label class="switch"><input type="checkbox" id="voiceOn" checked><span class="track" aria-hidden="true"></span><span>Host speaks out loud</span></label>
+  </div>
+</header>
+
+<div class="confirm" id="confirmRestart" hidden role="region" aria-label="Start over">
+  <p>Start over? This game ends and the roles get reshuffled.</p>
+  <div class="row">
+    <button class="primary" id="btnRestartYes" type="button">Yes, start over</button>
+    <button class="plain" id="btnRestartNo" type="button">Keep playing</button>
+  </div>
+</div>
+
+<main>
+
+<section id="s-lobby" class="lobby">
+  <div class="brief">
+    <p class="kicker">Case one of Mystery Night</p>
+    <h1 tabindex="-1">Death at the Chili Cook-Off</h1>
+    <p class="reading narration">Big Ron Hubble, three-time champion and this year's judge of the Maplewood Chili Cook-Off, has been found face-down in the award chili. One of you did it. Everyone has something to hide.</p>
+    <p class="reading">Put this screen where the whole table can see it. Each player types a name, then the phone gets passed around for secret roles. After that, nobody touches anyone else's secrets. The Inspector runs the clock, hands out evidence, and takes your questions.</p>
+    <div class="facts" aria-label="At a glance">
+      <div><strong>15</strong><span>minutes</span></div>
+      <div><strong>3 to 4</strong><span>players</span></div>
+      <div><strong>2</strong><span>rounds</span></div>
+      <div><strong>1</strong><span>killer</span></div>
+    </div>
+    <p class="note">Simulated Alexa+ experience. The host speaks through this screen. Tap the mic at the top for how it works, or to mute the host.</p>
+  </div>
+  <div class="card">
+    <h2>Who is at the table</h2>
+    <div class="players" id="nameInputs"></div>
+    <p class="note">Three players works too: leave the last name blank and the Inspector carries Gary's evidence into the rounds.</p>
+    <button class="primary" id="btnStart" type="button">Deal the roles</button>
+  </div>
+</section>
+
+<section id="s-deal" class="stack" hidden>
+  <p class="kicker">Secret roles. Pass and peek</p>
+  <h2 id="dealName" tabindex="-1"></h2>
+  <div class="card" id="dealCard">
+    <p id="dealPrompt"></p>
+    <button class="primary" id="btnPeek" type="button">I'm alone with the screen. Show my role</button>
+    <div id="roleBody" class="stack-tight" hidden></div>
+  </div>
+</section>
+
+<section id="s-host" class="stack" hidden>
+  <p class="kicker" id="hostKicker"></p>
+  <h2 class="visually-hidden" id="hostHead" tabindex="-1">The Inspector speaks</h2>
+  <div class="card narration"><span class="kicker gold">Inspector Hartley</span><p id="hostText"></p></div>
+  <div class="evidence" id="clueBox" hidden><p class="kicker gold">New evidence</p><p id="clueText"></p></div>
+  <div class="row"><button class="primary" id="btnHostNext" type="button"></button></div>
+</section>
+
+<section id="s-round" class="stack" hidden>
+  <p class="kicker" id="roundKicker"></p>
+  <h2 class="visually-hidden" id="roundHead" tabindex="-1">Question each other</h2>
+  <div class="round-grid">
+    <div class="stack">
+      <p class="timer" id="timerText" aria-live="off">5:00</p>
+      <div class="evidence">
+        <p class="kicker gold">Evidence on the table</p>
+        <ol id="roundClues"></ol>
+      </div>
+      <div class="stack-tight">
+        <p class="kicker">Try asking</p>
+        <p id="roundTips"></p>
+      </div>
+      <div class="row">
+        <button class="plain" id="btnPause" type="button">Pause the clock</button>
+        <button class="plain" id="btnEndRound" type="button">End the round now</button>
+      </div>
+    </div>
+    <div class="card" id="inspectorCard">
+      <h3>Question Inspector Hartley</h3>
+      <p class="note">He knows the scene, not the answer sheet, and he will not name the killer.</p>
+      <div class="log" id="inspectorLog" aria-live="polite"></div>
+      <div class="ask-row" id="askRow">
+        <label class="field" for="inspectorQ">Your question<input type="text" id="inspectorQ" maxlength="300" autocomplete="off" placeholder="Where was everyone at 11:45?"></label>
+        <button class="mic" id="btnMic" type="button" aria-label="Ask by voice" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M8 21h8"/></svg>
+        </button>
+        <button class="primary" id="btnAsk" type="button">Ask the Inspector</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s-accuse" class="stack" hidden>
+  <p class="kicker">The accusation</p>
+  <h2 tabindex="-1">On three, everyone point. Then tap who the table accuses.</h2>
+  <div class="accuse-grid" id="accuseGrid"></div>
+  <div class="row"><button class="primary" id="btnReveal" type="button" disabled>Lock it in and reveal the killer</button></div>
+</section>
+
+<section id="s-reveal" class="stack" hidden>
+  <p class="kicker">The reveal</p>
+  <h1 id="revealHead" tabindex="-1"></h1>
+  <div class="card narration"><span class="kicker gold">Inspector Hartley</span><p id="revealText"></p></div>
+  <div class="card">
+    <h3>For the record, everyone was lying</h3>
+    <div class="secrets" id="secretsOut"></div>
+  </div>
+  <div class="row"><button class="primary" id="btnAgain" type="button">Play again with new roles</button></div>
+</section>
+
+</main>
+</div>
+
+<script>
+(function () {
+"use strict";
+
+var CASE = {
+  roles: [
+    { key: "darlene", name: "Darlene Dupree", title: "Darlene Dupree, defending champion",
+      pub: "My Hall of Flame chili has won three ribbons and I am not here to make friends.",
+      secret: "You slipped Big Ron $200 this morning to guarantee the trophy. He took the envelope, then scored you a six. You found out an hour before he died, and you are furious. If the bribe comes out, you are finished at every cook-off in the county.",
+      lie: "You and Ron barely spoke today. Stick to it.",
+      goal: "Find the killer. Keep the bribe buried." },
+    { key: "chip", name: "Chip Caldwell", title: "Chip Caldwell, the newcomer",
+      pub: "First year entering! Beginner's luck, I guess?",
+      secret: "Your famous family recipe is Big Ron's. You fished his recipe card out of his recycling bin in July. He tasted your chili at 11:30 and went pale. You are terrified he figured it out before he died. Also, registration handed you a volunteer apron by mistake and you wore it all morning.",
+      lie: "You have never been anywhere near Ron's house, and the recipe is your grandmother's.",
+      goal: "Find the killer. Keep the recipe story straight." },
+    { key: "marge", name: "Marge Melton", title: "Marge Melton, cook-off organizer",
+      pub: "Seventeen years running this cook-off, and it runs on love, people.",
+      secret: "YOU DID IT. The entry-fee box is $460 short because of your casino weekend. Ron audited it this morning, and at 11:40 he told you he would announce the missing money from the stage. At 11:45, in your volunteer apron, you poured the Daredevil table's ghost-pepper extract into his private tasting jar. His heart could not take it, and you knew that.",
+      lie: "You were restocking napkins at the pie table from 11:40 to noon, and you never touch spicy anything. Deny everything. Point at Darlene's temper. Survive the vote.",
+      goal: "Walk away clean." },
+    { key: "gary", name: "Gary Gutteridge", title: "Gary Gutteridge, food blogger",
+      pub: "Gary's Gullet. Four thousand readers. I will be reviewing ALL of you.",
+      secret: "Ron banned you from the judging table for life after your review feud, so today you have been sneaking spoonfuls from every pot for a revenge write-up, including from the judge's private table around 11:45. You cannot admit you were there, you are banned. But you SAW someone in a volunteer apron at Ron's spot, and you are dying to be the center of attention about it.",
+      lie: "You respected the ban all day. Leak what you saw in dramatic hints, never the full truth.",
+      goal: "Find the killer. Become the story." }
+  ],
+  killer: "marge",
+  clue1: "Ron's speech notecards, found in his breast pocket: 1. Thank the sponsors. 2. Hand out the trophy. 3. Before we finish, the truth about this year's entry-fee account.",
+  clue2: "The Daredevil table's ghost-pepper extract, missing since 11:30, turns up wiped clean in the lost-and-found behind the organizer's booth. It smells faintly of lavender hand sanitizer. And the timeline firms up: Ron was alive at 11:40. He was found at 11:55. A volunteer apron was seen at the judge's table at 11:45.",
+  intro: "Nobody leaves the pavilion. At 11:55 this morning, Big Ron Hubble was found face-down in the award chili, and the county coroner tells me his tasting jar was dosed with enough ghost-pepper extract to stop a bull's heart, let alone Ron's. Everybody in this tent had a reason to be somewhere else, and everybody is about to tell me they were. Round one. Question each other. I'll be listening.",
+  round2: "Interesting table you all set. Memories getting sharper yet? Because the evidence just did. Round two. Somebody at this table is lying with real commitment, and I admire the craft, but I will have them.",
+  accuse: "Time's up. The chili is cold, and so is the trail about to be. On the count of three, every player points at one suspect. The table settles on one name and locks it in.",
+  revealRight: "The table has it. Marge Melton, seventeen years of love, one casino weekend, and $460 of entry-fee money she could not put back. Ron found the hole in the books this morning and promised to announce it from the stage. So at 11:45, in her volunteer apron, with hands that smelled of lavender sanitizer, Marge dosed the judge's private jar. The notecards, the wiped bottle behind her own booth, the apron at his table. It was always the organizer.",
+  revealWrong: "A fine pick, and a wrong one. It was Marge Melton. The $460 hole in the entry-fee box, the announcement Ron promised to make from the stage, the apron at the judge's table at 11:45, and a wiped bottle that still smelled of her lavender sanitizer, stashed behind her own booth. Seventeen years of love, and one audit she could not survive.",
+  tips1: "Where were you between 11:40 and 11:55? Why does Chip's chili taste so familiar? What was Ron about to announce?",
+  tips2: "Who wears a volunteer apron? Who never touches spicy food? Who had access to the lost-and-found?"
+};
+
+var state = { players: [], order: [], dealIx: 0, phase: "lobby", round: 1, timer: null, secs: 0, paused: false, accused: null, busy: false, from: "lobby" };
+var SCREENS = ["s-lobby", "s-deal", "s-host", "s-round", "s-accuse", "s-reveal"];
+var FOCUS = { "s-lobby": "h1", "s-deal": "#dealName", "s-host": "#hostHead", "s-round": "#roundHead", "s-accuse": "h2", "s-reveal": "#revealHead" };
+
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function show(id) {
+  SCREENS.forEach(function (s) { $(s).hidden = s !== id; });
+  $("confirmRestart").hidden = true;
+  closeAlexa();
+  window.scrollTo(0, 0);
+  var f = document.querySelector("#" + id + " " + FOCUS[id]);
+  if (f) f.focus({ preventScroll: true });
+}
+function roleFor(playerIx) { return CASE.roles[state.order[playerIx]]; }
+
+// Voice
+var voicePref = true;
+try { voicePref = localStorage.getItem("mn-voice") !== "off"; } catch (e) {}
+$("voiceOn").checked = voicePref;
+$("voiceOn").addEventListener("change", function () {
+  try { localStorage.setItem("mn-voice", this.checked ? "on" : "off"); } catch (e) {}
+  if (!this.checked && window.speechSynthesis) speechSynthesis.cancel();
+});
+function narrate(text) {
+  try {
+    if (!$("voiceOn").checked || !window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text); u.rate = 0.95; u.pitch = 0.8; speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function beep() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination); o.frequency.value = 660; g.gain.value = 0.15;
+    o.start(); setTimeout(function () { o.stop(); ctx.close(); }, 450);
+  } catch (e) {}
+}
+
+// Header controls
+function closeAlexa() { $("alexaPanel").hidden = true; $("btnAlexa").setAttribute("aria-expanded", "false"); }
+$("btnAlexa").addEventListener("click", function () {
+  var open = $("alexaPanel").hidden;
+  $("alexaPanel").hidden = !open; this.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) $("voiceOn").focus();
+});
+$("btnAlexaClose").addEventListener("click", function () { closeAlexa(); $("btnAlexa").focus(); });
+document.addEventListener("keydown", function (e) { if (e.key === "Escape") { closeAlexa(); $("confirmRestart").hidden = true; } });
+$("btnHome").addEventListener("click", function () {
+  if (!$("s-lobby").hidden) { $("nameInputs").querySelector("input").focus(); return; }
+  $("confirmRestart").hidden = false; $("btnRestartYes").focus();
+});
+$("btnRestartNo").addEventListener("click", function () { $("confirmRestart").hidden = true; $("btnHome").focus(); });
+$("btnRestartYes").addEventListener("click", restart);
+$("btnAgain").addEventListener("click", restart);
+function restart() {
+  stopTimer(); if (window.speechSynthesis) speechSynthesis.cancel();
+  state.players = []; state.order = []; state.dealIx = 0; state.phase = "lobby"; state.round = 1; state.accused = null;
+  $("inspectorLog").innerHTML = "";
+  show("s-lobby");
+}
+
+// Lobby
+(function () {
+  var holder = $("nameInputs");
+  for (var i = 0; i < 4; i++) {
+    var lab = el("label", "field", "Player " + (i + 1) + (i === 3 ? " (optional)" : ""));
+    lab.htmlFor = "p" + i;
+    var inp = document.createElement("input"); inp.type = "text"; inp.id = "p" + i; inp.maxLength = 24; inp.autocomplete = "off"; inp.placeholder = "First name";
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") $("btnStart").click(); });
+    lab.appendChild(inp); holder.appendChild(lab);
+  }
+})();
+function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+$("btnStart").addEventListener("click", function () {
+  state.players = [];
+  for (var i = 0; i < 4; i++) { var v = $("p" + i).value.trim(); if (v) state.players.push(v); }
+  while (state.players.length < 3) state.players.push("Player " + (state.players.length + 1));
+  state.players = state.players.slice(0, 4);
+  // Roles 0 to 2 always play (the killer is among them); Gary joins with a fourth player. Shuffle who gets which.
+  state.order = shuffle(CASE.roles.slice(0, state.players.length).map(function (_, i) { return i; }));
+  state.dealIx = 0; state.phase = "deal";
+  deal();
+});
+
+// Deal: pass and peek
+function deal() {
+  if (state.dealIx >= state.players.length) { hostIntro(); return; }
+  var who = state.players[state.dealIx];
+  $("dealName").textContent = who + ", you are up";
+  $("dealPrompt").textContent = "Hand the screen to " + who + ". Everyone else, eyes away.";
+  $("roleBody").hidden = true; $("roleBody").innerHTML = ""; $("btnPeek").hidden = false;
+  show("s-deal");
+}
+$("btnPeek").addEventListener("click", function () {
+  var role = roleFor(state.dealIx), b = $("roleBody"); b.innerHTML = "";
+  var head = el("h3", null, role.title); head.tabIndex = -1; b.appendChild(head);
+  b.appendChild(el("p", null, "Your table talk: “" + role.pub + "”"));
+  var inner = el("div", "inner");
+  inner.appendChild(el("p", "kicker gold", "Your secret"));
+  inner.appendChild(el("p", null, role.secret));
+  inner.appendChild(el("p", "kicker gold", "Your lie"));
+  inner.appendChild(el("p", null, role.lie));
+  b.appendChild(inner);
+  b.appendChild(el("p", "note", "Your goal: " + role.goal));
+  var done = el("button", "primary", "Got it. Hide my role"); done.type = "button";
+  done.addEventListener("click", function () { state.dealIx++; deal(); });
+  b.appendChild(done);
+  b.hidden = false; $("btnPeek").hidden = true; head.focus({ preventScroll: true });
+});
+
+// Host interstitials
+function hostScreen(kicker, text, clue, label, next) {
+  $("hostKicker").textContent = kicker;
+  $("hostText").textContent = text;
+  $("clueBox").hidden = !clue; if (clue) $("clueText").textContent = clue;
+  $("btnHostNext").textContent = label;
+  $("btnHostNext").onclick = next;
+  show("s-host"); narrate(text + (clue ? " New evidence. " + clue : ""));
+}
+function hostIntro() {
+  state.round = 1;
+  hostScreen("The scene. 11:55 AM, the pavilion", CASE.intro, CASE.clue1, "Start round one", function () { round(1); });
+}
+function betweenRounds() {
+  hostScreen("New evidence arrives", CASE.round2, CASE.clue2, "Start round two", function () { round(2); });
+}
+
+// Rounds
+function round(n) {
+  state.phase = "round" + n; state.round = n;
+  $("roundKicker").textContent = "Round " + n + " of 2. Question each other, out loud";
+  var list = $("roundClues"); list.innerHTML = "";
+  list.appendChild(el("li", null, CASE.clue1));
+  if (n === 2) list.appendChild(el("li", null, CASE.clue2));
+  $("roundTips").textContent = n === 1 ? CASE.tips1 : CASE.tips2;
+  startTimer(n === 1 ? 300 : 240, function () { if (n === 1) betweenRounds(); else accuse(); });
+  show("s-round");
+}
+function startTimer(secs, done) {
+  stopTimer(); state.secs = secs; state.paused = false; $("btnPause").textContent = "Pause the clock";
+  render();
+  state.timer = setInterval(function () {
+    if (state.paused) return;
+    state.secs--; render();
+    if (state.secs <= 0) { stopTimer(); beep(); done(); }
+  }, 1000);
+  function render() {
+    var m = Math.floor(state.secs / 60), s = state.secs % 60;
+    $("timerText").textContent = m + ":" + (s < 10 ? "0" : "") + s;
+    $("timerText").classList.toggle("low", state.secs <= 30);
+  }
+}
+function stopTimer() { if (state.timer) { clearInterval(state.timer); state.timer = null; } }
+$("btnPause").addEventListener("click", function () { state.paused = !state.paused; this.textContent = state.paused ? "Resume the clock" : "Pause the clock"; });
+$("btnEndRound").addEventListener("click", function () { stopTimer(); if (state.phase === "round1") betweenRounds(); else accuse(); });
+
+// Accusation
+function accuse() {
+  stopTimer(); state.phase = "accuse";
+  var g = $("accuseGrid"); g.innerHTML = ""; state.accused = null; $("btnReveal").disabled = true;
+  state.players.forEach(function (p, i) {
+    var r = roleFor(i);
+    var b = el("button"); b.type = "button"; b.setAttribute("aria-pressed", "false");
+    b.appendChild(el("span", null, p));
+    b.appendChild(el("span", "as", "as " + r.name));
+    b.addEventListener("click", function () {
+      state.accused = r.key;
+      Array.prototype.forEach.call(g.children, function (c) { c.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true"); $("btnReveal").disabled = false;
+    });
+    g.appendChild(b);
+  });
+  show("s-accuse"); narrate(CASE.accuse);
+}
+$("btnReveal").addEventListener("click", function () {
+  var right = state.accused === CASE.killer;
+  $("revealHead").textContent = right ? "The table got it" : "The killer almost walked";
+  $("revealText").textContent = right ? CASE.revealRight : CASE.revealWrong;
+  var s = $("secretsOut"); s.innerHTML = "";
+  state.players.forEach(function (p, i) {
+    var r = roleFor(i), d = el("div", "one");
+    d.appendChild(el("p", "kicker", p + " as " + r.title));
+    d.appendChild(el("p", null, r.secret));
+    s.appendChild(d);
+  });
+  state.phase = "reveal";
+  show("s-reveal"); narrate($("revealText").textContent);
+});
+
+// Inspector Q and A through the server route. The route falls back to the Inspector's case notes without a key.
+function ask(q) {
+  q = (q || "").trim();
+  if (!q || state.busy) return;
+  state.busy = true; $("btnAsk").disabled = true; $("inspectorQ").value = "";
+  var log = $("inspectorLog");
+  log.appendChild(el("p", "q", "Table: " + q));
+  var a = el("div", "a"); a.appendChild(el("span", "who", "Inspector Hartley"));
+  var body = el("p"); var dots = el("span", "thinking"); dots.setAttribute("aria-label", "The Inspector is thinking it over");
+  dots.appendChild(el("i")); dots.appendChild(el("i")); dots.appendChild(el("i")); body.appendChild(dots); a.appendChild(body); log.appendChild(a);
+  log.scrollTop = log.scrollHeight;
+  fetch("/api/inspector", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, round: state.round }) })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (r) { body.textContent = r.text; narrate(r.text); })
+    .catch(function () { body.textContent = "The Inspector tips his hat and says nothing. Ask again in a moment."; })
+    .then(function () { state.busy = false; $("btnAsk").disabled = false; log.scrollTop = log.scrollHeight; });
+}
+$("btnAsk").addEventListener("click", function () { ask($("inspectorQ").value); });
+$("inspectorQ").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ask(this.value); } });
+
+// Ask by voice, when the browser can listen. The button renders only when it works.
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  $("btnMic").hidden = false; $("askRow").classList.add("has-mic");
+  var rec = null;
+  $("btnMic").addEventListener("click", function () {
+    var btn = this;
+    if (rec) { rec.stop(); return; }
+    try {
+      rec = new SR(); rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 1;
+      btn.setAttribute("aria-pressed", "true"); btn.setAttribute("aria-label", "Listening. Tap to stop");
+      rec.onresult = function (e) { var t = e.results[0][0].transcript; $("inspectorQ").value = t; ask(t); };
+      rec.onerror = function () { $("inspectorQ").placeholder = "The mic did not catch that. Type it instead."; };
+      rec.onend = function () { rec = null; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", "Ask by voice"); };
+      rec.start();
+    } catch (e) { rec = null; btn.setAttribute("aria-pressed", "false"); }
+  });
+}
+})();
+</script>
+</body>
+</html>

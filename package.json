@@ -1,0 +1,16 @@
+{
+  "name": "mystery-night",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An AI-hosted murder mystery party for the living room. The table plays the suspects; the Inspector hosts.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "screens": "node scripts/screens.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.136.0"
+  }
+}
