@@ -27,9 +27,9 @@ A party game shown on one shared screen (a TV, a laptop on the counter, a phone 
 ## Motif
 The dashed gold "evidence" box is the one repeated motif: it carries every clue on every screen, and nothing else uses a dashed border.
 
-## Exceptions logged for Katie's ruling (not yet approved)
-1. **Dark ground (C-1, C-9).** The taste-test artifact Katie staged Oct 3 ran dark ("county fair at night") and the game is played on a TV in a dim room. Kept as the established ground of an existing app. Flip to light would be a one-token change.
-2. **Fonts (T-1).** Alfa Slab One and Source Serif 4 came from the staged artifact and are not on the pre-approved list. Kept so the entry matches what Katie saw; swap needs her pick.
+## Exceptions logged for Katie's ruling (both approved by Katie, Oct 23, 2026)
+1. **Dark ground (C-1, C-9). APPROVED by Katie, Fri Oct 23, 2026 (~11:45am CT): keep.** The taste-test artifact Katie staged Oct 3 ran dark ("county fair at night") and the game is played on a TV in a dim room. Kept as the established ground of an existing app. Flip to light would be a one-token change.
+2. **Fonts (T-1). APPROVED by Katie, Fri Oct 23, 2026 (~11:47am CT): keep.** Alfa Slab One and Source Serif 4 came from the staged artifact and are not on the pre-approved list. Kept so the entry matches what Katie saw; swap needs her pick.
 3. **No photograph (I-1, GBR PART 0 #16).** The game has no real people or work to photograph yet; there is no empty image slot (I-2). A photo of a table mid-game would belong on a future landing page, not inside the play screens.
 
 ## Width sweep
